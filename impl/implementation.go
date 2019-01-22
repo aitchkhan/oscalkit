@@ -13,11 +13,11 @@ const (
 	// totalControlsInExcel the total number of controls in the excel sheet
 	totalControlsInExcel = 264
 	// componentNameIndex The Column at which name of the component configuration is present
-	componentNameIndex = 16
+	componentNameIndex = 17
 	// uuidIndex The Column at which guid of component exist
-	uuidIndex = 17
+	uuidIndex = 18
 	// narrativeIndex The Column at which narrative of the component configuration is present
-	narrativeIndex = 18
+	narrativeIndex = 19
 	// controlIndex Column at which control is present in the excel sheet
 	controlIndex = 2
 	// rowIndex Starting point for valid rows (neglects titles)
@@ -86,7 +86,17 @@ func CreateComponentDefinition(gm guidMap, cdm cdMap, componentConfName string, 
 			}
 		}
 	}
-
+	controlConfiguration.ProvisioningMechanisms = []implementation.ProvisioningMechanism{
+		implementation.ProvisioningMechanism{
+			ProvisionedControls: []implementation.ControlId{
+				implementation.ControlId{
+					ControlID:    c.GetControl(control),
+					CatalogIDRef: c.GetID(),
+					ItemID:       "",
+				},
+			},
+		},
+	}
 	controlConfiguration.Parameters = parameters
 	cdm[componentConfName] = implementation.ComponentDefinition{
 		ComponentConfigurations: []*implementation.ComponentConfiguration{
@@ -103,19 +113,7 @@ func CreateComponentDefinition(gm guidMap, cdm cdMap, componentConfName string, 
 		ControlImplementations: []*implementation.ControlImplementation{
 			&implementation.ControlImplementation{
 				ControlConfigurations: []implementation.ControlConfiguration{
-					implementation.ControlConfiguration{
-						ConfigurationIDRef: componentConfGUID.String(),
-						ProvisioningMechanisms: []implementation.ProvisioningMechanism{
-							implementation.ProvisioningMechanism{
-								ProvisionedControls: []implementation.ControlId{
-									implementation.ControlId{
-										ControlID:    c.GetControl(control),
-										CatalogIDRef: c.GetID(),
-									},
-								},
-							},
-						},
-					},
+					controlConfiguration,
 				},
 			},
 		},
@@ -229,9 +227,16 @@ func CompileImplementation(cd cdMap, CSVS [][]string, cat Catalog, p *profile.Pr
 								arr[0].ControlConfigurations = append(arr[0].ControlConfigurations, cc)
 							}
 						}
-						for _, ci := range def.ControlImplementations {
-							for _, cc := range ci.ControlConfigurations {
-								arr[0].ControlConfigurations = append(arr[0].ControlConfigurations, cc)
+					}
+
+					for j, x := range arr[0].ControlConfigurations {
+						for _, def := range cd {
+							for _, ci := range def.ControlImplementations {
+								for _, cc := range ci.ControlConfigurations {
+									if cc.ConfigurationIDRef == x.ConfigurationIDRef {
+										arr[0].ControlConfigurations[j].ProvisioningMechanisms = cc.ProvisioningMechanisms
+									}
+								}
 							}
 						}
 					}
